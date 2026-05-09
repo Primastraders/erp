@@ -68,6 +68,15 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
 .badge.Stop{background:rgba(224,85,85,0.18);color:#f08080;}
 .badge.Virada{background:rgba(155,111,212,0.2);color:#c09de8;}
 .btn-del{background:transparent;border:1px solid rgba(224,85,85,0.3);color:#f08080;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;}
+.import-area{width:100%;min-height:180px;background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:14px;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;resize:vertical;line-height:1.5;}
+.import-area:focus{border-color:rgba(201,168,76,0.5);}
+.preview-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:12px;}
+.preview-table th{color:var(--gold);font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;}
+.preview-table td{padding:5px 8px;border-bottom:1px solid rgba(201,168,76,0.06);font-size:11px;}
+.import-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0;}
+.import-stat{background:var(--navy-md);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+.import-stat .label{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.import-stat .val{font-size:20px;font-weight:600;}
 .toast{position:fixed;bottom:24px;right:24px;z-index:100;border-radius:10px;padding:14px 20px;font-size:13px;display:none;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
 .toast.ok{display:flex;background:rgba(22,60,22,.97);border:1px solid rgba(80,200,80,.3);color:#7ddf7d;}
 .toast.erro{display:flex;background:rgba(60,22,22,.97);border:1px solid rgba(200,80,80,.3);color:#df7d7d;}
@@ -105,6 +114,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
       <button class="tab active" onclick="mudarTab('dia',this)">+ Entrada por Dia</button>
       <button class="tab" onclick="mudarTab('mes',this)">+ Mês Completo</button>
       <button class="tab" onclick="mudarTab('historico',this)">Histórico</button>
+      <button class="tab" onclick="mudarTab('importar',this)">⊕ Importar CSV/Planilha</button>
     </div>
 
     <div class="tab-content active" id="tab-dia">
@@ -169,6 +179,24 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
       </div>
     </div>
 
+
+    <div class="tab-content" id="tab-importar">
+      <div class="box">
+        <div class="sec-title">Importar CSV ou Google Planilhas</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+          Cole abaixo os dados copiados do <strong style="color:var(--text)">Google Planilhas</strong> (Ctrl+C na planilha) 
+          ou o conteúdo de um arquivo <strong style="color:var(--text)">.csv</strong>.<br/>
+          Formato esperado: <code style="color:var(--gold);font-size:11px;">DATA;0H;1H;2H;...;23H</code> com valores <code style="color:var(--gold);font-size:11px;">Take</code>, <code style="color:var(--gold);font-size:11px;">Stop</code>, <code style="color:var(--gold);font-size:11px;">Virada</code> ou vazio.
+        </p>
+        <textarea class="import-area" id="importArea" placeholder="Cole aqui os dados do Google Planilhas ou CSV...&#10;&#10;Exemplo:&#10;DATA;0H;1H;2H;3H;...&#10;01/04/2026;Take;Stop;Virada;Take;...&#10;02/04/2026;Stop;Take;;Take;..."></textarea>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <button class="btn-gold" onclick="previewImport()">Pré-visualizar</button>
+          <button class="btn-gold" id="btnSalvarImport" style="display:none;" onclick="salvarImport()">Salvar Tudo no Supabase</button>
+          <button class="btn-sm" onclick="document.getElementById('importArea').value='';document.getElementById('importPreview').innerHTML='';document.getElementById('btnSalvarImport').style.display='none';">Limpar</button>
+        </div>
+      </div>
+      <div id="importPreview"></div>
+    </div>
     <div class="tab-content" id="tab-historico">
       <div class="box">
         <div class="sec-title">Histórico de Operações</div>
@@ -348,6 +376,139 @@ async function deletar(id){
   toast('Excluído.','ok');
   carregarHistorico();
 }
+
+// ── IMPORTAR CSV / PLANILHAS ──────────────────────────────────────
+const TODOS_HORARIOS = ['0H','1H','2H','3H','4H','5H','6H','7H','8H','9H','10H','11H','12H','13H','14H','15H','16H','17H','18H','19H','20H','21H','22H','23H'];
+
+function parsearCSV(texto){
+  const linhas = texto.trim().split(/\r?\n/);
+  const resultado = [];
+  let headerIdx = -1;
+  let colunas = [];
+
+  // Encontra a linha de cabeçalho (que começa com DATA ou data)
+  for(let i=0;i<linhas.length;i++){
+    const l = linhas[i].trim();
+    if(/^data/i.test(l) || /^DATA/.test(l)){
+      headerIdx = i;
+      // Suporta ; ou \t como separador
+      const sep = l.includes('\t') ? '\t' : ';';
+      colunas = l.split(sep).map(c=>c.trim());
+      break;
+    }
+  }
+
+  if(headerIdx === -1){
+    // Tenta interpretar sem cabeçalho: primeira coluna = data, demais = horários padrão
+    colunas = ['DATA', ...TODOS_HORARIOS];
+    headerIdx = -1;
+  }
+
+  const inicio = headerIdx >= 0 ? headerIdx+1 : 0;
+  const sep = linhas[0] && linhas[0].includes('\t') ? '\t' : ';';
+
+  for(let i=inicio;i<linhas.length;i++){
+    const l = linhas[i].trim();
+    if(!l) continue;
+    const cells = l.split(sep).map(c=>c.trim());
+    const dataRaw = cells[0];
+    if(!dataRaw || !/\d/.test(dataRaw)) continue;
+
+    // Converte DD/MM/AAAA para AAAA-MM-DD
+    let dataISO = '';
+    const m = dataRaw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m) dataISO = m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+    else dataISO = dataRaw; // já pode estar em ISO
+
+    for(let j=1;j<colunas.length;j++){
+      const horario = colunas[j];
+      const valor = cells[j]||'';
+      if(!valor || !['Take','Stop','Virada'].includes(valor)) continue;
+      resultado.push({data:dataISO, horario, resultado:valor});
+    }
+  }
+  return resultado;
+}
+
+function previewImport(){
+  const texto = document.getElementById('importArea').value.trim();
+  if(!texto){toast('Cole os dados primeiro.','erro');return;}
+
+  const registros = parsearCSV(texto);
+  const prev = document.getElementById('importPreview');
+
+  if(registros.length===0){
+    prev.innerHTML = '<div class="box" style="color:var(--stop);text-align:center;padding:20px;">Nenhum registro válido encontrado. Verifique o formato dos dados.</div>';
+    document.getElementById('btnSalvarImport').style.display='none';
+    return;
+  }
+
+  // Stats
+  const takes   = registros.filter(r=>r.resultado==='Take').length;
+  const stops   = registros.filter(r=>r.resultado==='Stop').length;
+  const viradas = registros.filter(r=>r.resultado==='Virada').length;
+  const total   = registros.length;
+
+  let html = '<div class="box">';
+  html += '<div class="sec-title">Pré-visualização — '+total+' registros encontrados</div>';
+  html += '<div class="import-stats">';
+  html += '<div class="import-stat"><div class="label">Total</div><div class="val" style="color:var(--text)">'+total+'</div></div>';
+  html += '<div class="import-stat"><div class="label">Takes</div><div class="val" style="color:var(--take)">'+takes+'</div></div>';
+  html += '<div class="import-stat"><div class="label">Stops</div><div class="val" style="color:var(--stop)">'+stops+'</div></div>';
+  html += '<div class="import-stat"><div class="label">Viradas</div><div class="val" style="color:var(--virada)">'+viradas+'</div></div>';
+  html += '</div>';
+
+  // Tabela preview (primeiros 30)
+  html += '<table class="preview-table"><thead><tr><th>Data</th><th>Horário</th><th>Resultado</th></tr></thead><tbody>';
+  registros.slice(0,30).forEach(r=>{
+    html += '<tr><td>'+r.data+'</td><td>'+r.horario+'</td><td><span class="badge '+r.resultado+'">'+r.resultado+'</span></td></tr>';
+  });
+  if(registros.length>30) html += '<tr><td colspan="3" style="color:var(--muted);text-align:center;">... e mais '+(registros.length-30)+' registros</td></tr>';
+  html += '</tbody></table></div>';
+
+  prev.innerHTML = html;
+  document.getElementById('btnSalvarImport').style.display='block';
+  // Guarda registros para salvar
+  window._importRegistros = registros;
+}
+
+async function salvarImport(){
+  const registros = window._importRegistros;
+  if(!registros||registros.length===0){toast('Nada para salvar.','erro');return;}
+
+  const btn = document.getElementById('btnSalvarImport');
+  btn.disabled=true; btn.textContent='Salvando '+registros.length+' registros...';
+
+  // Enriquece com mes/ano
+  const payload = registros.map(r=>{
+    const d = new Date(r.data+'T12:00:00');
+    const mes = String(d.getMonth()+1).padStart(2,'0');
+    const ano = d.getFullYear();
+    const mesNome = MESES[parseInt(mes)]+'/'+ano;
+    return {...r, mes:mesNome, ano};
+  });
+
+  // Salva em lotes de 100
+  let salvos = 0;
+  for(let i=0;i<payload.length;i+=100){
+    const lote = payload.slice(i,i+100);
+    const res = await supaFetch('/rest/v1/backtest',{
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+      body:JSON.stringify(lote)
+    });
+    if(res) salvos += lote.length;
+  }
+
+  btn.disabled=false; btn.textContent='Salvar Tudo no Supabase';
+  toast('✔ '+salvos+' registros importados com sucesso!','ok');
+  window._importRegistros = null;
+  document.getElementById('importArea').value='';
+  document.getElementById('importPreview').innerHTML='';
+  btn.style.display='none';
+  carregarHistorico();
+}
+
 </script>
 </body>
 </html>
