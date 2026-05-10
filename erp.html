@@ -423,6 +423,7 @@ function parsearCSV(texto){
   const resultado = [];
   let headerIdx = -1;
   let colunas = [];
+  let sep = ';';
 
   // Encontra a linha de cabeçalho (que começa com DATA ou data)
   for(let i=0;i<linhas.length;i++){
@@ -430,7 +431,7 @@ function parsearCSV(texto){
     if(/^data/i.test(l) || /^DATA/.test(l)){
       headerIdx = i;
       // Suporta ; ou \t como separador
-      const sep = l.includes('\t') ? '\t' : ';';
+      sep = l.includes('\t') ? '\t' : ';';
       colunas = l.split(sep).map(c=>c.trim());
       break;
     }
@@ -440,15 +441,15 @@ function parsearCSV(texto){
     // Tenta interpretar sem cabeçalho: primeira coluna = data, demais = horários padrão
     colunas = ['DATA', ...TODOS_HORARIOS];
     headerIdx = -1;
+    sep = linhas.some(l=>l.includes('\t')) ? '\t' : ';';
   }
 
   const inicio = headerIdx >= 0 ? headerIdx+1 : 0;
-  const sep = linhas[0] && linhas[0].includes('\t') ? '\t' : ';';
 
   for(let i=inicio;i<linhas.length;i++){
-    const l = linhas[i].trim();
-    if(!l) continue;
-    const cells = l.split(sep).map(c=>c.trim());
+    const l = linhas[i];
+    if(!l || !l.trim()) continue;
+    const cells = l.replace(/\r$/,'').split(sep).map(c=>c.trim());
     const dataRaw = cells[0];
     if(!dataRaw || !/\d/.test(dataRaw)) continue;
 
@@ -460,8 +461,10 @@ function parsearCSV(texto){
 
     for(let j=1;j<colunas.length;j++){
       const horario = colunas[j];
-      const valor = cells[j]||'';
-      if(!valor || !['Take','Stop','Virada'].includes(valor)) continue;
+      const valorRaw = cells[j]||'';
+      const valorNorm = valorRaw.trim().toLowerCase();
+      const valor = valorNorm==='take' ? 'Take' : valorNorm==='stop' ? 'Stop' : valorNorm==='virada' ? 'Virada' : '';
+      if(!valor) continue;
       resultado.push({data:dataISO, horario, resultado:valor});
     }
   }
