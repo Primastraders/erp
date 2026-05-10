@@ -256,9 +256,12 @@ const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
 let usuarioLogado = null;
 
 async function supaFetch(path,opts={}){
-  const r = await fetch(SUPA_URL+path,{...opts,headers:{'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json','Prefer':'return=representation',...(opts.headers||{})}});
-  if(r.status===204) return null;
-  return r.json();
+  const isDelete = opts.method === 'DELETE';
+  const baseHeaders = {'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json'};
+  if(!isDelete) baseHeaders['Prefer'] = 'return=representation';
+  const r = await fetch(SUPA_URL+path,{...opts,headers:{...baseHeaders,...(opts.headers||{})}});
+  if(r.status===204||r.status===200) return null;
+  try { return await r.json(); } catch(e) { return null; }
 }
 
 function toast(msg,tipo){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+tipo;setTimeout(()=>t.className='toast',3500);}
