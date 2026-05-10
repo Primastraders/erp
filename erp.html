@@ -137,6 +137,14 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
               <option value="Virada">Virada</option>
             </select>
           </div>
+          <div class="form-field"><label>Tempo Gráfico</label>
+            <select id="diaTG">
+              <option value="H1M5">H1M5</option>
+              <option value="H1M1">H1M1</option>
+              <option value="H1M15">H1M15</option>
+              <option value="19H">19H — Abertura</option>
+            </select>
+          </div>
           <button class="btn-gold" onclick="salvarDia()" id="btnSalvarDia">Salvar</button>
         </div>
       </div>
@@ -170,6 +178,15 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
             <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Ano</label>
             <input type="number" id="anoSelect" value="2025" min="2020" max="2030" style="width:90px;"/>
           </div>
+          <div class="form-field">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
+            <select id="mesTG">
+              <option value="H1M5">H1M5</option>
+              <option value="H1M1">H1M1</option>
+              <option value="H1M15">H1M15</option>
+              <option value="19H">19H — Abertura</option>
+            </select>
+          </div>
           <button class="btn-gold" onclick="gerarTabelaMes()">Gerar Tabela</button>
         </div>
         <div id="tabelaMesWrap" style="overflow-x:auto;"></div>
@@ -189,7 +206,16 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
           Formato esperado: <code style="color:var(--gold);font-size:11px;">DATA;0H;1H;2H;...;23H</code> com valores <code style="color:var(--gold);font-size:11px;">Take</code>, <code style="color:var(--gold);font-size:11px;">Stop</code>, <code style="color:var(--gold);font-size:11px;">Virada</code> ou vazio.
         </p>
         <textarea class="import-area" id="importArea" placeholder="Cole aqui os dados do Google Planilhas ou CSV...&#10;&#10;Exemplo:&#10;DATA;0H;1H;2H;3H;...&#10;01/04/2026;Take;Stop;Virada;Take;...&#10;02/04/2026;Stop;Take;;Take;..."></textarea>
-        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-field" style="margin-bottom:0;">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
+            <select id="importTG" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;">
+              <option value="H1M5">H1M5</option>
+              <option value="H1M1">H1M1</option>
+              <option value="H1M15">H1M15</option>
+              <option value="19H">19H — Abertura</option>
+            </select>
+          </div>
           <button class="btn-gold" onclick="previewImport()">Pré-visualizar</button>
           <button class="btn-gold" id="btnSalvarImport" style="display:none;" onclick="salvarImport()">Salvar Tudo no Supabase</button>
           <button class="btn-sm" onclick="document.getElementById('importArea').value='';document.getElementById('importPreview').innerHTML='';document.getElementById('btnSalvarImport').style.display='none';">Limpar</button>
@@ -213,7 +239,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
           <input type="number" id="filtroAno" value="2025" onchange="carregarHistorico()" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:7px 12px;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;width:90px;"/>
         </div>
         <table class="hist-table">
-          <thead><tr><th>Data</th><th>Horário</th><th>Resultado</th><th>Ação</th></tr></thead>
+          <thead><tr><th>Data</th><th>Horário</th><th>Resultado</th><th>TG</th><th>Ação</th></tr></thead>
           <tbody id="histBody"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px;">Carregando...</td></tr></tbody>
         </table>
       </div>
@@ -282,7 +308,7 @@ async function salvarDia(){
   const mes=String(d.getMonth()+1).padStart(2,'0');
   const ano=d.getFullYear();
   const mesNome=MESES[parseInt(mes)]+'/'+ano;
-  const res=await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({data,horario,resultado,mes:mesNome,ano})});
+  const res=await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({data,horario,resultado,mes:mesNome,ano,tempo_grafico:tg})});
   btn.disabled=false;btn.textContent='Salvar';
   if(res){toast('Salvo: '+resultado+' — '+horario+' em '+data,'ok');carregarStatsHoje();}
   else toast('Erro ao salvar.','erro');
@@ -367,7 +393,7 @@ async function carregarHistorico(){
   if(mes){const mesNome=MESES[parseInt(mes)]+'/'+ano;url='/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&order=data.desc,horario.asc&select=*';}
   const r=await supaFetch(url);
   if(!r||r.length===0){tbody.innerHTML='<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;">Nenhum registro.</td></tr>';return;}
-  tbody.innerHTML=r.map(row=>'<tr><td>'+row.data+'</td><td>'+row.horario+'</td><td><span class="badge '+row.resultado+'">'+row.resultado+'</span></td><td><button class="btn-del" onclick="deletar('+row.id+')">Excluir</button></td></tr>').join('');
+  tbody.innerHTML=r.map(row=>'<tr><td>'+row.data+'</td><td>'+row.horario+'</td><td><span class="badge '+row.resultado+'">'+row.resultado+'</span></td><td style="color:var(--muted);font-size:10px">'+(row.tempo_grafico||'—')+'</td><td><button class="btn-del" onclick="deletar('+row.id+')">Excluir</button></td></tr>').join('');
 }
 
 async function deletar(id){
@@ -474,6 +500,7 @@ function previewImport(){
 
 async function salvarImport(){
   const registros = window._importRegistros;
+  const tgImport = document.getElementById('importTG').value;
   if(!registros||registros.length===0){toast('Nada para salvar.','erro');return;}
 
   const btn = document.getElementById('btnSalvarImport');
@@ -485,7 +512,7 @@ async function salvarImport(){
     const mes = String(d.getMonth()+1).padStart(2,'0');
     const ano = d.getFullYear();
     const mesNome = MESES[parseInt(mes)]+'/'+ano;
-    return {...r, mes:mesNome, ano};
+    return {...r, mes:mesNome, ano, tempo_grafico:tgImport};
   });
 
   // Salva em lotes de 100
