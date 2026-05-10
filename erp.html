@@ -260,7 +260,11 @@ async function supaFetch(path,opts={}){
   const baseHeaders = {'apikey':SUPA_ANON,'Authorization':'Bearer '+SUPA_ANON,'Content-Type':'application/json'};
   if(!isDelete) baseHeaders['Prefer'] = 'return=representation';
   const r = await fetch(SUPA_URL+path,{...opts,headers:{...baseHeaders,...(opts.headers||{})}});
-  if(r.status===204||r.status===200) return null;
+  if(!r.ok){
+    try { console.error('Supabase error:', await r.json()); } catch(e) {}
+    return null;
+  }
+  if(r.status===204) return null;
   try { return await r.json(); } catch(e) { return null; }
 }
 
@@ -304,6 +308,7 @@ async function salvarDia(){
   const data=document.getElementById('diaData').value;
   const horario=document.getElementById('diaHorario').value;
   const resultado=document.getElementById('diaResultado').value;
+  const tg=document.getElementById('diaTG').value;
   if(!data){toast('Selecione a data.','erro');return;}
   const btn=document.getElementById('btnSalvarDia');
   btn.disabled=true;btn.textContent='Salvando...';
@@ -334,9 +339,10 @@ async function carregarStatsHoje(){
 async function gerarTabelaMes(){
   const mes=document.getElementById('mesSelect').value;
   const ano=parseInt(document.getElementById('anoSelect').value);
+  const tgMes=document.getElementById('mesTG').value;
   const wrap=document.getElementById('tabelaMesWrap');
   const mesNome=MESES[parseInt(mes)]+'/'+ano;
-  const dados=await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&select=*')||[];
+  const dados=await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&tempo_grafico=eq.'+encodeURIComponent(tgMes)+'&select=*')||[];
   const mapa={};
   dados.forEach(d=>{mapa[d.data+'_'+d.horario]=d.resultado;});
   const diasNoMes=new Date(ano,parseInt(mes),0).getDate();
@@ -369,12 +375,13 @@ async function gerarTabelaMes(){
 async function salvarMesCompleto(){
   const mes=document.getElementById('mesSelect').value;
   const ano=parseInt(document.getElementById('anoSelect').value);
+  const tgMes=document.getElementById('mesTG').value;
   const mesNome=MESES[parseInt(mes)]+'/'+ano;
   const selects=document.querySelectorAll('#tabelaMesWrap select');
   const payload=[];
   selects.forEach(sel=>{
     if(!sel.value) return;
-    payload.push({data:sel.dataset.data,horario:sel.dataset.hora,resultado:sel.value,mes:mesNome,ano});
+    payload.push({data:sel.dataset.data,horario:sel.dataset.hora,resultado:sel.value,mes:mesNome,ano,tempo_grafico:tgMes});
   });
   if(payload.length===0){toast('Nenhum resultado para salvar.','erro');return;}
   const btn=document.querySelector('#mesBtnWrap .btn-gold');
@@ -520,10 +527,12 @@ async function salvarImport(){
     return {...r, mes:mesNome, ano, tempo_grafico:tgImport};
   });
 
-  // Primeiro deleta registros existentes do mesmo mês+TG
-  const primeiroMes = payload[0].mes;
-  const primeiroTG  = payload[0].tempo_grafico;
-  await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(primeiroMes)+'&tempo_grafico=eq.'+encodeURIComponent(primeiroTG), {method:'DELETE'});
+  // Primeiro deleta os registros existentes dos meses presentes na planilha para o mesmo TG.
+  const chavesSubstituicao = [...new Set(payload.map(r=>r.mes+'||'+r.tempo_grafico))];
+  for(const chave of chavesSubstituicao){
+    const [mesSubstituir, tgSubstituir] = chave.split('||');
+    await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesSubstituir)+'&tempo_grafico=eq.'+encodeURIComponent(tgSubstituir), {method:'DELETE'});
+  }
 
   // Depois insere tudo novo
   let salvos = 0;
