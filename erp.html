@@ -376,8 +376,10 @@ async function salvarMesCompleto(){
   if(payload.length===0){toast('Nenhum resultado para salvar.','erro');return;}
   const btn=document.querySelector('#mesBtnWrap .btn-gold');
   btn.disabled=true;btn.textContent='Salvando '+payload.length+' registros...';
+  // Deleta mês anterior antes de inserir
+  await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&tempo_grafico=eq.'+encodeURIComponent(tgMes),{method:'DELETE'});
   for(let i=0;i<payload.length;i+=50){
-    await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(payload.slice(i,i+50))});
+    await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(payload.slice(i,i+50))});
   }
   btn.disabled=false;btn.textContent='Salvar Mês Completo';
   toast(payload.length+' registros salvos — '+mesNome,'ok');
@@ -515,13 +517,18 @@ async function salvarImport(){
     return {...r, mes:mesNome, ano, tempo_grafico:tgImport};
   });
 
-  // Salva em lotes de 100
+  // Primeiro deleta registros existentes do mesmo mês+TG
+  const primeiroMes = payload[0].mes;
+  const primeiroTG  = payload[0].tempo_grafico;
+  await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(primeiroMes)+'&tempo_grafico=eq.'+encodeURIComponent(primeiroTG), {method:'DELETE'});
+
+  // Depois insere tudo novo
   let salvos = 0;
   for(let i=0;i<payload.length;i+=100){
     const lote = payload.slice(i,i+100);
     const res = await supaFetch('/rest/v1/backtest',{
       method:'POST',
-      headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+      headers:{'Prefer':'return=representation'},
       body:JSON.stringify(lote)
     });
     if(res) salvos += lote.length;
