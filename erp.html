@@ -51,9 +51,9 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
 .stat-card{background:var(--navy-md);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
 .stat-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
 .stat-val{font-size:24px;font-weight:600;}
-.mes-header{display:grid;grid-template-columns:80px repeat(16,1fr);gap:3px;margin-bottom:4px;}
+.mes-header{display:grid;grid-template-columns:70px repeat(24,1fr);gap:2px;margin-bottom:4px;}
 .mes-col-hdr{font-size:9px;color:var(--gold);text-align:center;font-weight:600;padding:4px 2px;background:var(--navy-lt);border-radius:3px;}
-.mes-row{display:grid;grid-template-columns:80px repeat(16,1fr);gap:3px;margin-bottom:3px;align-items:center;}
+.mes-row{display:grid;grid-template-columns:70px repeat(24,1fr);gap:2px;margin-bottom:2px;align-items:center;}
 .mes-date{font-size:10px;color:var(--muted);padding:2px 4px;}
 .mes-cell select{width:100%;background:var(--navy-lt);border:1px solid transparent;border-radius:3px;padding:3px 1px;font-size:9px;font-family:'Barlow',sans-serif;color:var(--muted);text-align:center;cursor:pointer;outline:none;-webkit-appearance:none;}
 .mes-cell select.Take{background:rgba(76,175,130,0.2);color:#6ddfaa;border-color:rgba(76,175,130,0.3);}
@@ -251,7 +251,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
 <script>
 const SUPA_URL  = 'https://adjpkedenvijkjcpjiuv.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkanBrZWRlbnZpamtqY3BqaXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzAxOTIsImV4cCI6MjA5Mzc0NjE5Mn0.C_9N4cHt_EXyDaRyodmEBG5isc-fYFqQBWDB4UhP6Xc';
-const HORAS = ['0H','1H','2H','3H','4H','5H','6H','7H','8H','9H','10H','11H','12H','19H','21H','23H'];
+const HORAS = ['0H','1H','2H','3H','4H','5H','6H','7H','8H','9H','10H','11H','12H','13H','14H','15H','16H','17H','18H','19H','20H','21H','22H','23H'];
 const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let usuarioLogado = null;
 
