@@ -40,7 +40,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
 .sec-title{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
 .sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
 .box{background:rgba(15,35,64,0.7);border:1px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:20px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;margin-bottom:12px;}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end;margin-bottom:12px;}
 .form-field label{display:block;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
 .form-field input,.form-field select{width:100%;background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;}
 .form-field select option{background:var(--navy-md);}
@@ -122,6 +122,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
         <div class="sec-title">Registrar Operação</div>
         <div class="form-row">
           <div class="form-field"><label>Data</label><input type="date" id="diaData"/></div>
+          <div class="form-field"><label>Ativo</label><input type="text" id="diaAtivo" list="ativosList" value="XAUUSDm"/></div>
           <div class="form-field"><label>Horário</label>
             <select id="diaHorario">
               <option>0H</option><option>1H</option><option>2H</option><option>3H</option>
@@ -179,6 +180,10 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
             <input type="number" id="anoSelect" value="2025" min="2020" max="2030" style="width:90px;"/>
           </div>
           <div class="form-field">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Ativo</label>
+            <input type="text" id="mesAtivo" list="ativosList" value="XAUUSDm" style="width:120px;"/>
+          </div>
+          <div class="form-field">
             <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
             <select id="mesTG">
               <option value="H1M5">H1M5</option>
@@ -207,6 +212,10 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
         </p>
         <textarea class="import-area" id="importArea" placeholder="Cole aqui os dados do Google Planilhas ou CSV...&#10;&#10;Exemplo:&#10;DATA;0H;1H;2H;3H;...&#10;01/04/2026;Take;Stop;Virada;Take;...&#10;02/04/2026;Stop;Take;;Take;..."></textarea>
         <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-field" style="margin-bottom:0;">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Ativo</label>
+            <input type="text" id="importAtivo" list="ativosList" value="XAUUSDm" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;width:120px;"/>
+          </div>
           <div class="form-field" style="margin-bottom:0;">
             <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
             <select id="importTG" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;">
@@ -237,24 +246,40 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
             <option value="11">Novembro</option><option value="12">Dezembro</option>
           </select>
           <input type="number" id="filtroAno" value="2025" onchange="carregarHistorico()" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:7px 12px;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;width:90px;"/>
+          <input type="text" id="filtroAtivo" list="ativosList" value="" placeholder="Todos ativos" onchange="carregarHistorico()" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:7px 12px;font-size:12px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;width:130px;"/>
         </div>
         <table class="hist-table">
-          <thead><tr><th>Data</th><th>Horário</th><th>Resultado</th><th>TG</th><th>Ação</th></tr></thead>
-          <tbody id="histBody"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px;">Carregando...</td></tr></tbody>
+          <thead><tr><th>Data</th><th>Ativo</th><th>Horário</th><th>Resultado</th><th>TG</th><th>Ação</th></tr></thead>
+          <tbody id="histBody"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px;">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
   </main>
 </div>
 <div class="toast" id="toast"></div>
+<datalist id="ativosList">
+  <option value="XAUUSDm"></option>
+  <option value="XAUUSD"></option>
+  <option value="BTCUSD"></option>
+  <option value="EURUSD"></option>
+  <option value="GBPUSD"></option>
+  <option value="NAS100"></option>
+  <option value="US30"></option>
+</datalist>
 
 <script>
 const SUPA_URL  = 'https://adjpkedenvijkjcpjiuv.supabase.co';
-const SUPA_PUBLIC_KEY = 'sb_publishable_YGko2q97xLCt57ZQ9SlflA_qFGXBzoI';
+const SUPA_PUBLIC_KEY = 'COLE_AQUI_A_CHAVE_PUBLICA_SUPABASE';
 const ERP_ACCESS_HASH = 'e6bb383d4d3affbe092f89f929b7192410b293f82e22c552dd0a8c3d97364c55';
 const HORAS = ['0H','1H','2H','3H','4H','5H','6H','7H','8H','9H','10H','11H','12H','13H','14H','15H','16H','17H','18H','19H','20H','21H','22H','23H'];
 const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let usuarioLogado = null;
+
+function valorAtivo(id){
+  const el=document.getElementById(id);
+  const v=(el&&el.value?el.value:'').trim();
+  return v || 'XAUUSDm';
+}
 
 async function supaFetch(path,opts={}){
   const isDelete = opts.method === 'DELETE';
@@ -322,6 +347,7 @@ function mudarTab(id,el){
 
 async function salvarDia(){
   const data=document.getElementById('diaData').value;
+  const ativo=valorAtivo('diaAtivo');
   const horario=document.getElementById('diaHorario').value;
   const resultado=document.getElementById('diaResultado').value;
   const tg=document.getElementById('diaTG').value;
@@ -332,15 +358,16 @@ async function salvarDia(){
   const mes=String(d.getMonth()+1).padStart(2,'0');
   const ano=d.getFullYear();
   const mesNome=MESES[parseInt(mes)]+'/'+ano;
-  const res=await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({data,horario,resultado,mes:mesNome,ano,tempo_grafico:tg})});
+  const res=await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({data,ativo,horario,resultado,mes:mesNome,ano,tempo_grafico:tg})});
   btn.disabled=false;btn.textContent='Salvar';
-  if(res){toast('Salvo: '+resultado+' — '+horario+' em '+data,'ok');carregarStatsHoje();}
+  if(res){toast('Salvo: '+ativo+' — '+resultado+' — '+horario+' em '+data,'ok');carregarStatsHoje();}
   else toast('Erro ao salvar.','erro');
 }
 
 async function carregarStatsHoje(){
   const hoje=new Date().toISOString().split('T')[0];
-  const r=await supaFetch('/rest/v1/backtest?data=eq.'+hoje+'&select=resultado');
+  const ativo=valorAtivo('diaAtivo');
+  const r=await supaFetch('/rest/v1/backtest?data=eq.'+hoje+'&ativo=eq.'+encodeURIComponent(ativo)+'&select=resultado');
   if(!r) return;
   const t=r.filter(x=>x.resultado==='Take').length;
   const s=r.filter(x=>x.resultado==='Stop').length;
@@ -356,9 +383,10 @@ async function gerarTabelaMes(){
   const mes=document.getElementById('mesSelect').value;
   const ano=parseInt(document.getElementById('anoSelect').value);
   const tgMes=document.getElementById('mesTG').value;
+  const ativo=valorAtivo('mesAtivo');
   const wrap=document.getElementById('tabelaMesWrap');
   const mesNome=MESES[parseInt(mes)]+'/'+ano;
-  const dados=await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&tempo_grafico=eq.'+encodeURIComponent(tgMes)+'&select=*')||[];
+  const dados=await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&tempo_grafico=eq.'+encodeURIComponent(tgMes)+'&ativo=eq.'+encodeURIComponent(ativo)+'&select=*')||[];
   const mapa={};
   dados.forEach(d=>{mapa[d.data+'_'+d.horario]=d.resultado;});
   const diasNoMes=new Date(ano,parseInt(mes),0).getDate();
@@ -392,36 +420,39 @@ async function salvarMesCompleto(){
   const mes=document.getElementById('mesSelect').value;
   const ano=parseInt(document.getElementById('anoSelect').value);
   const tgMes=document.getElementById('mesTG').value;
+  const ativo=valorAtivo('mesAtivo');
   const mesNome=MESES[parseInt(mes)]+'/'+ano;
   const selects=document.querySelectorAll('#tabelaMesWrap select');
   const payload=[];
   selects.forEach(sel=>{
     if(!sel.value) return;
-    payload.push({data:sel.dataset.data,horario:sel.dataset.hora,resultado:sel.value,mes:mesNome,ano,tempo_grafico:tgMes});
+    payload.push({data:sel.dataset.data,ativo,horario:sel.dataset.hora,resultado:sel.value,mes:mesNome,ano,tempo_grafico:tgMes});
   });
   if(payload.length===0){toast('Nenhum resultado para salvar.','erro');return;}
   const btn=document.querySelector('#mesBtnWrap .btn-gold');
   btn.disabled=true;btn.textContent='Salvando '+payload.length+' registros...';
   // Deleta mês anterior antes de inserir
-  await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&tempo_grafico=eq.'+encodeURIComponent(tgMes),{method:'DELETE'});
+  await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&tempo_grafico=eq.'+encodeURIComponent(tgMes)+'&ativo=eq.'+encodeURIComponent(ativo),{method:'DELETE'});
   for(let i=0;i<payload.length;i+=50){
     await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(payload.slice(i,i+50))});
   }
   btn.disabled=false;btn.textContent='Salvar Mês Completo';
-  toast(payload.length+' registros salvos — '+mesNome,'ok');
+  toast(payload.length+' registros salvos — '+ativo+' — '+mesNome,'ok');
   carregarHistorico();
 }
 
 async function carregarHistorico(){
   const mes=document.getElementById('filtroMes').value;
   const ano=document.getElementById('filtroAno').value;
+  const ativo=(document.getElementById('filtroAtivo').value||'').trim();
   const tbody=document.getElementById('histBody');
-  tbody.innerHTML='<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;">Carregando...</td></tr>';
+  tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:16px;">Carregando...</td></tr>';
   let url='/rest/v1/backtest?ano=eq.'+ano+'&order=data.desc,horario.asc&select=*';
   if(mes){const mesNome=MESES[parseInt(mes)]+'/'+ano;url='/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesNome)+'&order=data.desc,horario.asc&select=*';}
+  if(ativo) url=url.replace('&order=', '&ativo=eq.'+encodeURIComponent(ativo)+'&order=');
   const r=await supaFetch(url);
-  if(!r||r.length===0){tbody.innerHTML='<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;">Nenhum registro.</td></tr>';return;}
-  tbody.innerHTML=r.map(row=>'<tr><td>'+row.data+'</td><td>'+row.horario+'</td><td><span class="badge '+row.resultado+'">'+row.resultado+'</span></td><td style="color:var(--muted);font-size:10px">'+(row.tempo_grafico||'—')+'</td><td><button class="btn-del" onclick="deletar('+row.id+')">Excluir</button></td></tr>').join('');
+  if(!r||r.length===0){tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:16px;">Nenhum registro.</td></tr>';return;}
+  tbody.innerHTML=r.map(row=>'<tr><td>'+row.data+'</td><td style="font-weight:600;color:var(--gold)">'+(row.ativo||'XAUUSDm')+'</td><td>'+row.horario+'</td><td><span class="badge '+row.resultado+'">'+row.resultado+'</span></td><td style="color:var(--muted);font-size:10px">'+(row.tempo_grafico||'—')+'</td><td><button class="btn-del" onclick="deletar('+row.id+')">Excluir</button></td></tr>').join('');
 }
 
 async function deletar(id){
@@ -489,6 +520,7 @@ function parsearCSV(texto){
 
 function previewImport(){
   const texto = document.getElementById('importArea').value.trim();
+  const ativo = valorAtivo('importAtivo');
   if(!texto){toast('Cole os dados primeiro.','erro');return;}
 
   const registros = parsearCSV(texto);
@@ -507,7 +539,7 @@ function previewImport(){
   const total   = registros.length;
 
   let html = '<div class="box">';
-  html += '<div class="sec-title">Pré-visualização — '+total+' registros encontrados</div>';
+  html += '<div class="sec-title">Pré-visualização — '+ativo+' — '+total+' registros encontrados</div>';
   html += '<div class="import-stats">';
   html += '<div class="import-stat"><div class="label">Total</div><div class="val" style="color:var(--text)">'+total+'</div></div>';
   html += '<div class="import-stat"><div class="label">Takes</div><div class="val" style="color:var(--take)">'+takes+'</div></div>';
@@ -516,11 +548,11 @@ function previewImport(){
   html += '</div>';
 
   // Tabela preview (primeiros 30)
-  html += '<table class="preview-table"><thead><tr><th>Data</th><th>Horário</th><th>Resultado</th></tr></thead><tbody>';
+  html += '<table class="preview-table"><thead><tr><th>Data</th><th>Ativo</th><th>Horário</th><th>Resultado</th></tr></thead><tbody>';
   registros.slice(0,30).forEach(r=>{
-    html += '<tr><td>'+r.data+'</td><td>'+r.horario+'</td><td><span class="badge '+r.resultado+'">'+r.resultado+'</span></td></tr>';
+    html += '<tr><td>'+r.data+'</td><td style="color:var(--gold);font-weight:600">'+ativo+'</td><td>'+r.horario+'</td><td><span class="badge '+r.resultado+'">'+r.resultado+'</span></td></tr>';
   });
-  if(registros.length>30) html += '<tr><td colspan="3" style="color:var(--muted);text-align:center;">... e mais '+(registros.length-30)+' registros</td></tr>';
+  if(registros.length>30) html += '<tr><td colspan="4" style="color:var(--muted);text-align:center;">... e mais '+(registros.length-30)+' registros</td></tr>';
   html += '</tbody></table></div>';
 
   prev.innerHTML = html;
@@ -532,6 +564,7 @@ function previewImport(){
 async function salvarImport(){
   const registros = window._importRegistros;
   const tgImport = document.getElementById('importTG').value;
+  const ativo = valorAtivo('importAtivo');
   if(!registros||registros.length===0){toast('Nada para salvar.','erro');return;}
 
   const btn = document.getElementById('btnSalvarImport');
@@ -543,14 +576,14 @@ async function salvarImport(){
     const mes = String(d.getMonth()+1).padStart(2,'0');
     const ano = d.getFullYear();
     const mesNome = MESES[parseInt(mes)]+'/'+ano;
-    return {...r, mes:mesNome, ano, tempo_grafico:tgImport};
+    return {...r, ativo, mes:mesNome, ano, tempo_grafico:tgImport};
   });
 
-  // Primeiro deleta os registros existentes dos meses presentes na planilha para o mesmo TG.
-  const chavesSubstituicao = [...new Set(payload.map(r=>r.mes+'||'+r.tempo_grafico))];
+  // Primeiro deleta os registros existentes dos meses presentes na planilha para o mesmo ativo e TG.
+  const chavesSubstituicao = [...new Set(payload.map(r=>r.mes+'||'+r.tempo_grafico+'||'+r.ativo))];
   for(const chave of chavesSubstituicao){
-    const [mesSubstituir, tgSubstituir] = chave.split('||');
-    await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesSubstituir)+'&tempo_grafico=eq.'+encodeURIComponent(tgSubstituir), {method:'DELETE'});
+    const [mesSubstituir, tgSubstituir, ativoSubstituir] = chave.split('||');
+    await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesSubstituir)+'&tempo_grafico=eq.'+encodeURIComponent(tgSubstituir)+'&ativo=eq.'+encodeURIComponent(ativoSubstituir), {method:'DELETE'});
   }
 
   // Depois insere tudo novo
