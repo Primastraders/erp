@@ -140,7 +140,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
           </div>
           <div class="form-field"><label>Tempo Gráfico</label>
             <select id="diaTG">
-              <option value="19H">Abertura</option>
+              <option value="19H">19H</option>
               <option value="H1M1">H1M1</option>
               <option value="H1M2">H1M2</option>
               <option value="H1M5">H1M5</option>
@@ -187,7 +187,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
           <div class="form-field">
             <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
             <select id="mesTG">
-              <option value="19H">Abertura</option>
+              <option value="19H">19H</option>
               <option value="H1M1">H1M1</option>
               <option value="H1M2">H1M2</option>
               <option value="H1M5">H1M5</option>
@@ -221,7 +221,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
           <div class="form-field" style="margin-bottom:0;">
             <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
             <select id="importTG" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;">
-              <option value="19H">Abertura</option>
+              <option value="19H">19H</option>
               <option value="H1M1">H1M1</option>
               <option value="H1M2">H1M2</option>
               <option value="H1M5">H1M5</option>
@@ -272,7 +272,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
 
 <script>
 const SUPA_URL  = 'https://adjpkedenvijkjcpjiuv.supabase.co';
-const SUPA_PUBLIC_KEY = 'sb_publishable_YGko2q97xLCt57ZQ9SlflA_qFGXBzoI';
+const SUPA_PUBLIC_KEY = 'COLE_AQUI_A_CHAVE_PUBLICA_SUPABASE';
 const ERP_ACCESS_HASH = 'e6bb383d4d3affbe092f89f929b7192410b293f82e22c552dd0a8c3d97364c55';
 const HORAS = ['0H','1H','2H','3H','4H','5H','6H','7H','8H','9H','10H','11H','12H','13H','14H','15H','16H','17H','18H','19H','20H','21H','22H','23H'];
 const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -482,15 +482,20 @@ function parsearCSV(texto){
   let headerIdx = -1;
   let colunas = [];
   let sep = ';';
+  const separar = (linha)=>{
+    const limpa = linha.replace(/\r$/,'').trim();
+    if(sep === 'ws') return limpa.split(/\s+/).map(c=>c.trim());
+    return limpa.split(sep).map(c=>c.trim());
+  };
 
   // Encontra a linha de cabeçalho (que começa com DATA ou data)
   for(let i=0;i<linhas.length;i++){
     const l = linhas[i].trim();
     if(/^data/i.test(l) || /^DATA/.test(l)){
       headerIdx = i;
-      // Suporta ; ou \t como separador
-      sep = l.includes('\t') ? '\t' : ';';
-      colunas = l.split(sep).map(c=>c.trim());
+      // Suporta ;, tab ou espaços como separador
+      sep = l.includes('\t') ? '\t' : l.includes(';') ? ';' : 'ws';
+      colunas = separar(l);
       break;
     }
   }
@@ -499,7 +504,7 @@ function parsearCSV(texto){
     // Tenta interpretar sem cabeçalho: primeira coluna = data, demais = horários padrão
     colunas = ['DATA', ...TODOS_HORARIOS];
     headerIdx = -1;
-    sep = linhas.some(l=>l.includes('\t')) ? '\t' : ';';
+    sep = linhas.some(l=>l.includes('\t')) ? '\t' : linhas.some(l=>l.includes(';')) ? ';' : 'ws';
   }
 
   const inicio = headerIdx >= 0 ? headerIdx+1 : 0;
@@ -507,7 +512,7 @@ function parsearCSV(texto){
   for(let i=inicio;i<linhas.length;i++){
     const l = linhas[i];
     if(!l || !l.trim()) continue;
-    const cells = l.replace(/\r$/,'').split(sep).map(c=>c.trim());
+    const cells = separar(l);
     const dataRaw = cells[0];
     if(!dataRaw || !/\d/.test(dataRaw)) continue;
 
@@ -534,7 +539,7 @@ function previewImport(){
   const ativo = valorAtivo('importAtivo');
   if(!texto){toast('Cole os dados primeiro.','erro');return;}
 
-  const registros = parsearCSV(texto);
+  const registros = parsearCSV(texto).map(r=>({...r, ativo}));
   const prev = document.getElementById('importPreview');
 
   if(registros.length===0){
@@ -561,7 +566,7 @@ function previewImport(){
   // Tabela preview (primeiros 30)
   html += '<table class="preview-table"><thead><tr><th>Data</th><th>Ativo</th><th>Horário</th><th>Resultado</th></tr></thead><tbody>';
   registros.slice(0,30).forEach(r=>{
-    html += '<tr><td>'+r.data+'</td><td style="color:var(--gold);font-weight:600">'+ativo+'</td><td>'+r.horario+'</td><td><span class="badge '+r.resultado+'">'+r.resultado+'</span></td></tr>';
+    html += '<tr><td>'+r.data+'</td><td style="color:var(--gold);font-weight:600">'+r.ativo+'</td><td>'+r.horario+'</td><td><span class="badge '+r.resultado+'">'+r.resultado+'</span></td></tr>';
   });
   if(registros.length>30) html += '<tr><td colspan="4" style="color:var(--muted);text-align:center;">... e mais '+(registros.length-30)+' registros</td></tr>';
   html += '</tbody></table></div>';
@@ -573,10 +578,18 @@ function previewImport(){
 }
 
 async function salvarImport(){
-  const registros = window._importRegistros;
+  let registros = window._importRegistros || [];
   const tgImport = document.getElementById('importTG').value;
   const ativo = valorAtivo('importAtivo');
-  if(!registros||registros.length===0){toast('Nada para salvar.','erro');return;}
+  if(!registros || registros.length===0){
+    const texto = document.getElementById('importArea').value.trim();
+    registros = texto ? parsearCSV(texto).map(r=>({...r, ativo})) : [];
+    window._importRegistros = registros;
+  }
+  if(!registros||registros.length===0){
+    toast('Nada para salvar. Clique em Pré-visualizar e confira os registros.','erro');
+    return;
+  }
 
   const btn = document.getElementById('btnSalvarImport');
   btn.disabled=true; btn.textContent='Salvando '+registros.length+' registros...';
@@ -587,14 +600,19 @@ async function salvarImport(){
     const mes = String(d.getMonth()+1).padStart(2,'0');
     const ano = d.getFullYear();
     const mesNome = MESES[parseInt(mes)]+'/'+ano;
-    return {...r, ativo, mes:mesNome, ano, tempo_grafico:tgImport};
+    return {...r, ativo:(r.ativo||ativo), mes:mesNome, ano, tempo_grafico:tgImport};
   });
 
   // Primeiro deleta os registros existentes dos meses presentes na planilha para o mesmo ativo e TG.
   const chavesSubstituicao = [...new Set(payload.map(r=>r.mes+'||'+r.tempo_grafico+'||'+r.ativo))];
   for(const chave of chavesSubstituicao){
     const [mesSubstituir, tgSubstituir, ativoSubstituir] = chave.split('||');
-    await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesSubstituir)+'&tempo_grafico=eq.'+encodeURIComponent(tgSubstituir)+'&ativo=eq.'+encodeURIComponent(ativoSubstituir), {method:'DELETE'});
+    const del = await supaFetch('/rest/v1/backtest?mes=eq.'+encodeURIComponent(mesSubstituir)+'&tempo_grafico=eq.'+encodeURIComponent(tgSubstituir)+'&ativo=eq.'+encodeURIComponent(ativoSubstituir), {method:'DELETE'});
+    if(ultimoErroSupabase){
+      btn.disabled=false; btn.textContent='Salvar Tudo no Supabase';
+      toast('Erro ao limpar registros antigos: '+ultimoErroSupabase,'erro');
+      return;
+    }
   }
 
   // Depois insere tudo novo
@@ -607,9 +625,18 @@ async function salvarImport(){
       body:JSON.stringify(lote)
     });
     if(res) salvos += lote.length;
+    else{
+      btn.disabled=false; btn.textContent='Salvar Tudo no Supabase';
+      toast('Erro ao salvar lote: '+(ultimoErroSupabase||'Supabase recusou o envio'),'erro');
+      return;
+    }
   }
 
   btn.disabled=false; btn.textContent='Salvar Tudo no Supabase';
+  if(salvos===0){
+    toast('Nenhum registro foi salvo. Confira a pré-visualização.','erro');
+    return;
+  }
   toast('✔ '+salvos+' registros importados com sucesso!','ok');
   window._importRegistros = null;
   document.getElementById('importArea').value='';
