@@ -274,6 +274,7 @@ const ERP_ACCESS_HASH = 'e6bb383d4d3affbe092f89f929b7192410b293f82e22c552dd0a8c3
 const HORAS = ['0H','1H','2H','3H','4H','5H','6H','7H','8H','9H','10H','11H','12H','13H','14H','15H','16H','17H','18H','19H','20H','21H','22H','23H'];
 const MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let usuarioLogado = null;
+let ultimoErroSupabase = '';
 
 function valorAtivo(id){
   const el=document.getElementById(id);
@@ -282,6 +283,7 @@ function valorAtivo(id){
 }
 
 async function supaFetch(path,opts={}){
+  ultimoErroSupabase = '';
   const isDelete = opts.method === 'DELETE';
   const baseHeaders = {'apikey':SUPA_PUBLIC_KEY,'Content-Type':'application/json'};
   if(!SUPA_PUBLIC_KEY.startsWith('sb_publishable_')){
@@ -290,7 +292,13 @@ async function supaFetch(path,opts={}){
   if(!isDelete) baseHeaders['Prefer'] = 'return=representation';
   const r = await fetch(SUPA_URL+path,{...opts,headers:{...baseHeaders,...(opts.headers||{})}});
   if(!r.ok){
-    try { console.error('Supabase error:', await r.json()); } catch(e) {}
+    try {
+      const erro = await r.json();
+      ultimoErroSupabase = erro.message || erro.details || erro.hint || JSON.stringify(erro);
+      console.error('Supabase error:', erro);
+    } catch(e) {
+      ultimoErroSupabase = 'HTTP '+r.status;
+    }
     return null;
   }
   if(r.status===204) return null;
@@ -361,7 +369,7 @@ async function salvarDia(){
   const res=await supaFetch('/rest/v1/backtest',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({data,ativo,horario,resultado,mes:mesNome,ano,tempo_grafico:tg})});
   btn.disabled=false;btn.textContent='Salvar';
   if(res){toast('Salvo: '+ativo+' — '+resultado+' — '+horario+' em '+data,'ok');carregarStatsHoje();}
-  else toast('Erro ao salvar.','erro');
+  else toast('Erro ao salvar: '+(ultimoErroSupabase||'verifique a chave/API e RLS'),'erro');
 }
 
 async function carregarStatsHoje(){
