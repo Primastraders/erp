@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ERP — Primas Traders</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23081529'/%3E%3Cpath d='M14 38c12-2 19-10 25-24 2 12-2 22-12 30 10-3 17-9 22-18 3 12-7 24-25 27' fill='none' stroke='%23c9a84c' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{--navy:#081529;--navy-md:#0f2340;--navy-lt:#122444;--gold:#c9a84c;--gold-lt:#e0c06e;--text:#e8e8e8;--muted:#7a9ab8;--border:rgba(201,168,76,0.18);--input-bg:#0a1628;--take:#4caf82;--stop:#e05555;--virada:#9b6fd4;}
@@ -115,6 +116,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
       <button class="tab" onclick="mudarTab('mes',this)">+ Mês Completo</button>
       <button class="tab" onclick="mudarTab('historico',this)">Histórico</button>
       <button class="tab" onclick="mudarTab('importar',this)">⊕ Importar CSV/Planilha</button>
+      <button class="tab" onclick="mudarTab('rr',this)">RR / Margem</button>
     </div>
 
     <div class="tab-content active" id="tab-dia">
@@ -240,6 +242,38 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
         </div>
       </div>
       <div id="importPreview"></div>
+    </div>
+    <div class="tab-content" id="tab-rr">
+      <div class="box">
+        <div class="sec-title">Comparação de RR por Ativo e Tempo Gráfico</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+          Selecione o ativo e o tempo gráfico, cole a tabela de comparação e salve. Formato esperado:
+          <code style="color:var(--gold);font-size:11px;">Margem;Recuo;RR médio;Take;Virada;Stop;Assertividade</code>.
+        </p>
+        <textarea class="import-area" id="rrArea" placeholder="Cole aqui a comparação...&#10;&#10;Margem Recuo RR médio Take Virada Stop Assertividade&#10;0.010 0.005 0.899 1146 353 639 70,11%&#10;0.020 0.005 0.878 1152 354 632 70,44%"></textarea>
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-field" style="margin-bottom:0;">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Ativo</label>
+            <input type="text" id="rrAtivo" list="ativosList" value="XAUUSDm" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;width:120px;"/>
+          </div>
+          <div class="form-field" style="margin-bottom:0;">
+            <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px;">Tempo Gráfico</label>
+            <select id="rrTG" style="background:var(--input-bg);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:8px 12px;font-size:13px;font-family:'Barlow',sans-serif;color:var(--text);outline:none;">
+              <option value="19H">19H</option>
+              <option value="H1M1">H1M1</option>
+              <option value="H1M2">H1M2</option>
+              <option value="H1M5">H1M5</option>
+              <option value="H1M10">H1M10</option>
+              <option value="H1M15">H1M15</option>
+              <option value="H4M10">H4M10</option>
+            </select>
+          </div>
+          <button class="btn-gold" onclick="previewRR()">Pré-visualizar</button>
+          <button class="btn-gold" id="btnSalvarRR" style="display:none;" onclick="salvarRR()">Salvar RR no Supabase</button>
+          <button class="btn-sm" onclick="document.getElementById('rrArea').value='';document.getElementById('rrPreview').innerHTML='';document.getElementById('btnSalvarRR').style.display='none';">Limpar</button>
+        </div>
+      </div>
+      <div id="rrPreview"></div>
     </div>
     <div class="tab-content" id="tab-historico">
       <div class="box">
@@ -477,6 +511,88 @@ async function deletar(id){
   await supaFetch('/rest/v1/backtest?id=eq.'+id,{method:'DELETE'});
   toast('Excluído.','ok');
   carregarHistorico();
+}
+
+// ── RR / MARGEM ──────────────────────────────────────────────────
+function parseNumeroBR(v){
+  const s=String(v||'').trim().replace('%','').replace(/\./g,'.').replace(',','.');
+  const n=Number(s);
+  return Number.isFinite(n)?n:null;
+}
+
+function splitLinhaTabela(linha){
+  const limpa=linha.trim();
+  if(!limpa) return [];
+  if(limpa.includes('\t')) return limpa.split('\t').map(x=>x.trim()).filter(Boolean);
+  if(limpa.includes(';')) return limpa.split(';').map(x=>x.trim()).filter(Boolean);
+  return limpa.split(/\s+/).map(x=>x.trim()).filter(Boolean);
+}
+
+function parseRR(texto){
+  const linhas=texto.trim().split(/\r?\n/);
+  const registros=[];
+  linhas.forEach(linha=>{
+    const l=linha.trim();
+    if(!l || /^compar/i.test(l) || /^margem/i.test(l)) return;
+    const p=splitLinhaTabela(l);
+    if(p.length<7) return;
+    const margem=parseNumeroBR(p[0]);
+    const recuo=parseNumeroBR(p[1]);
+    const rr=parseNumeroBR(p[2]);
+    const take=parseInt(p[3],10);
+    const virada=parseInt(p[4],10);
+    const stop=parseInt(p[5],10);
+    const assertividade=parseNumeroBR(p[6]);
+    if([margem,recuo,rr,assertividade].some(v=>v===null) || [take,virada,stop].some(v=>!Number.isFinite(v))) return;
+    registros.push({margem,recuo,rr_medio:rr,take,virada,stop,assertividade});
+  });
+  return registros;
+}
+
+function previewRR(){
+  const texto=document.getElementById('rrArea').value.trim();
+  const ativo=valorAtivo('rrAtivo');
+  const tg=document.getElementById('rrTG').value;
+  if(!texto){toast('Cole a comparação primeiro.','erro');return;}
+  const registros=parseRR(texto).map(r=>({...r,ativo,tempo_grafico:tg}));
+  const prev=document.getElementById('rrPreview');
+  if(!registros.length){
+    prev.innerHTML='<div class="box"><p style="color:var(--stop);font-size:13px;">Nenhuma linha válida encontrada.</p></div>';
+    document.getElementById('btnSalvarRR').style.display='none';
+    return;
+  }
+  window._rrRegistros=registros;
+  document.getElementById('btnSalvarRR').style.display='inline-block';
+  prev.innerHTML='<div class="box"><div class="sec-title">Pré-visualização — '+ativo+' — '+tg+' — '+registros.length+' linhas</div>'+
+    '<table class="preview-table"><thead><tr><th>Margem</th><th>Recuo</th><th>RR médio</th><th>Take</th><th>Virada</th><th>Stop</th><th>Assertividade</th></tr></thead><tbody>'+
+    registros.map(r=>'<tr><td>'+r.margem.toFixed(3)+'</td><td>'+r.recuo.toFixed(3)+'</td><td>'+r.rr_medio.toFixed(3)+'</td><td>'+r.take+'</td><td>'+r.virada+'</td><td>'+r.stop+'</td><td>'+r.assertividade.toFixed(2).replace('.',',')+'%</td></tr>').join('')+
+    '</tbody></table></div>';
+}
+
+async function salvarRR(){
+  const registros=window._rrRegistros||[];
+  if(!registros.length){toast('Clique em Pré-visualizar antes de salvar.','erro');return;}
+  const btn=document.getElementById('btnSalvarRR');
+  const ativo=registros[0].ativo;
+  const tg=registros[0].tempo_grafico;
+  btn.disabled=true; btn.textContent='Salvando RR...';
+  await supaFetch('/rest/v1/rr_ativos?ativo=eq.'+encodeURIComponent(ativo)+'&tempo_grafico=eq.'+encodeURIComponent(tg),{method:'DELETE'});
+  if(ultimoErroSupabase){
+    btn.disabled=false; btn.textContent='Salvar RR no Supabase';
+    toast('Erro ao limpar RR antigo: '+ultimoErroSupabase,'erro');
+    return;
+  }
+  const res=await supaFetch('/rest/v1/rr_ativos',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(registros)});
+  btn.disabled=false; btn.textContent='Salvar RR no Supabase';
+  if(res){
+    toast('✔ '+registros.length+' linhas de RR salvas — '+ativo+' — '+tg,'ok');
+    document.getElementById('rrArea').value='';
+    document.getElementById('rrPreview').innerHTML='';
+    btn.style.display='none';
+    window._rrRegistros=null;
+  }else{
+    toast('Erro ao salvar RR: '+(ultimoErroSupabase||'verifique a tabela rr_ativos'),'erro');
+  }
 }
 
 // ── IMPORTAR CSV / PLANILHAS ──────────────────────────────────────
