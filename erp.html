@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ERP — Primas Traders</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23081529'/%3E%3Cpath d='M14 38c12-2 19-10 25-24 2 12-2 22-12 30 10-3 17-9 22-18 3 12-7 24-25 27' fill='none' stroke='%23c9a84c' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"/>
+<link rel="icon" type="image/png" href="primas-favicon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{--navy:#081529;--navy-md:#0f2340;--navy-lt:#122444;--gold:#c9a84c;--gold-lt:#e0c06e;--text:#e8e8e8;--muted:#7a9ab8;--border:rgba(201,168,76,0.18);--input-bg:#0a1628;--take:#4caf82;--stop:#e05555;--virada:#9b6fd4;}
@@ -248,7 +248,7 @@ main{position:relative;z-index:10;max-width:1200px;margin:0 auto;padding:28px 24
         <div class="sec-title">Comparação de RR por Ativo e Tempo Gráfico</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
           Selecione o ativo e o tempo gráfico, cole a tabela de comparação e salve. Formato esperado:
-          <code style="color:var(--gold);font-size:11px;">Margem;Recuo;RR médio;Take;Virada;Stop;Assertividade</code>.
+          <code style="color:var(--gold);font-size:11px;">Margem;Recuo;RR médio;Take;Virada;Stop;Assertividade</code>. Se vier com Total antes da assertividade, o ERP ignora o Total.
         </p>
         <textarea class="import-area" id="rrArea" placeholder="Cole aqui a comparação...&#10;&#10;Margem Recuo RR médio Take Virada Stop Assertividade&#10;0.010 0.005 0.899 1146 353 639 70,11%&#10;0.020 0.005 0.878 1152 354 632 70,44%"></textarea>
         <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:flex-end;">
@@ -542,7 +542,7 @@ function parseRR(texto){
     const take=parseInt(p[3],10);
     const virada=parseInt(p[4],10);
     const stop=parseInt(p[5],10);
-    const assertividade=parseNumeroBR(p[6]);
+    const assertividade=parseNumeroBR(p[p.length-1]);
     if([margem,recuo,rr,assertividade].some(v=>v===null) || [take,virada,stop].some(v=>!Number.isFinite(v))) return;
     registros.push({margem,recuo,rr_medio:rr,take,virada,stop,assertividade});
   });
